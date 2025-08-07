@@ -1,0 +1,83 @@
+.flashcard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.flip-wrapper {
+  perspective: 1000px;
+}
+
+.flashcard {
+  width: 400px;
+  height: 250px;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  position: relative;
+  cursor: pointer;
+}
+
+.flashcard.flipped {
+  transform: rotateY(180deg);
+}
+
+.front, .back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  font-size: 1.2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
+.nav-buttons {
+  margin-top: 50px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.option-button {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 12px 16px;
+  font-size: 1rem;
+  border-radius: 8px;
+  color: white;
+  background-color: #6841b1ff;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+
+.option-button.correct {
+  background-color: #325633ff;
+}
+
+.option-button.incorrect {
+  background-color: #b61222ff;
+}
+
+.result-message {
+  font-weight: bold;
+  margin-top: 12px;
+}
+
+.result-message.correct {
+  color: green;
+}
+
+.result-message.incorrect {
+  color: red;
+}
