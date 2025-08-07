@@ -95,12 +95,27 @@ function App() {
     }
   };
 
+  // 🔥 UPDATED FUNCTION
   const fetchStacks = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/get-stacks`);
-      setSavedStacks(res.data.stacks);
+      console.log("✅ Response from backend:", res);
+
+      if (res.data && Array.isArray(res.data.stacks)) {
+        setSavedStacks(res.data.stacks);
+      } else {
+        console.warn("⚠️ Unexpected response format:", res.data);
+        setSavedStacks([]);
+      }
     } catch (err) {
-      console.error("Fetching stacks failed:", err);
+      console.error("❌ Fetching stacks failed:", err);
+      if (err.response) {
+        console.error("Backend error response:", err.response.data);
+      } else if (err.request) {
+        console.error("No response received:", err.request);
+      } else {
+        console.error("Other error:", err.message);
+      }
     }
   };
 
