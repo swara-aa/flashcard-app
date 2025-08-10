@@ -2,18 +2,21 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-import fitz
-import openai
+from ast import literal_eval
+from dotenv import load_dotenv
 import os
 import re
 import json
-from dotenv import load_dotenv
-from ast import literal_eval
+import fitz
+import openai
 
 import database
 import models
 from models import Flashcard
 
+# ----------------------------
+# Init
+# ----------------------------
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -21,25 +24,26 @@ models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
 
-from fastapi.middleware.cors import CORSMiddleware
-
-from fastapi.middleware.cors import CORSMiddleware
-
-origins = [
+# ----------------------------
+# CORS (allow prod Vercel + local dev)
+# ----------------------------
+ALLOWED_ORIGINS = [
     "https://flashcard-app-frontend-gjf4.vercel.app",
-    "http://localhost:3000",  # Optional: for local testing
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=ALLOWED_ORIGINS,                         # exact origins, no trailing slash
+    allow_origin_regex=r"^https://flashcard-app-frontend(-[a-z0-9]+)?\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-
+# ----------------------------
+# DB Dependency
+# ----------------------------
 def get_db():
     db = database.SessionLocal()
     try:
@@ -47,10 +51,30 @@ def get_db():
     finally:
         db.close()
 
+# ----------------------------
+# Schemas
+# ----------------------------
+class TextInput(BaseModel):
+    text: str
+
+class StackInput(BaseModel):
+    stack_name: str
+    cards: list[dict]
+
+# ----------------------------
+# Health
+# ----------------------------
+@app.get("/health")
+def health():
+    return {"ok": True}
+
 @app.get("/")
 def read_root():
     return {"message": "Hello from FastAPI!"}
 
+# ----------------------------
+# Endpoints
+# ----------------------------
 @app.post("/upload-pdf")
 async def upload_pdf(pdf: UploadFile = File(...)):
     try:
@@ -60,9 +84,6 @@ async def upload_pdf(pdf: UploadFile = File(...)):
         return {"extracted_text": text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read PDF: {str(e)}")
-
-class TextInput(BaseModel):
-    text: str
 
 @app.post("/generate-flashcards")
 async def generate_flashcards(payload: TextInput, db: Session = Depends(get_db)):
@@ -121,16 +142,14 @@ async def generate_flashcards(payload: TextInput, db: Session = Depends(get_db))
                         distractors = distractors[:3]
                     else:
                         raise ValueError("Not a JSON list")
-                except Exception as e:
-                    print("❌ Failed to parse distractors:", e)
+                except Exception:
                     distractors = ["Incorrect Answer 1", "Incorrect Answer 2", "Incorrect Answer 3"]
 
-                flashcard = Flashcard(
+                db.add(Flashcard(
                     question=question,
                     answer=answer,
                     distractors=json.dumps(distractors)
-                )
-                db.add(flashcard)
+                ))
 
                 generated_cards.append({
                     "question": question,
@@ -144,10 +163,6 @@ async def generate_flashcards(payload: TextInput, db: Session = Depends(get_db))
     except Exception as e:
         print("❌ Error during flashcard generation:", e)
         raise HTTPException(status_code=500, detail=str(e))
-
-class StackInput(BaseModel):
-    stack_name: str
-    cards: list[dict]
 
 @app.post("/save-stack")
 def save_stack(data: StackInput, db: Session = Depends(get_db)):
